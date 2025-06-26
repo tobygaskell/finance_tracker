@@ -1,3 +1,6 @@
+"""Utility functions for finance tracking, database operations, and data visualization."""
+
+import logging
 import os
 
 import mysql.connector
@@ -6,10 +9,11 @@ import plotly.graph_objects as go
 import streamlit as st
 from sqlalchemy import create_engine
 
+logger = logging.getLogger(__name__)
+
 
 def calculate_stamp_duty(price):
-    """
-    Calculate Stamp Duty Land Tax (SDLT) for a given property price.
+    """Calculate Stamp Duty Land Tax (SDLT) for a given property price.
 
     Rates (as of June 2025):
     - 0% on the first £125,000
@@ -34,7 +38,7 @@ def calculate_stamp_duty(price):
 
 
 def display_salary(salary, outgoings):
-    """ """
+    """Display a stacked horizontal bar chart of salary allocation and return the remaining savings."""
     total_outgoings = sum(outgoings.values())
     savings = salary - total_outgoings
     segments = outgoings.copy()
@@ -62,21 +66,21 @@ def display_salary(salary, outgoings):
                 x=[amount],
                 name=label,
                 orientation="h",
-                marker=dict(color=colors[i % len(colors)]),
+                marker={"color": colors[i % len(colors)]},
                 hovertemplate=f"{label}: £{amount:,.0f}<extra></extra>",
-            )
+            ),
         )
 
     # Reduce space and hide axis/grid
     fig.update_layout(
         barmode="stack",
-        margin=dict(l=0, r=0, t=0, b=0),
+        margin={"l": 0, "r": 0, "t": 0, "b": 0},
         height=100,
-        xaxis=dict(showgrid=False, visible=False),
-        yaxis=dict(showgrid=False, visible=False),
+        xaxis={"showgrid": False, "visible": False},
+        yaxis={"showgrid": False, "visible": False},
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#F9F7F2"),
+        font={"color": "#F9F7F2"},
         showlegend=False,
     )
 
@@ -86,11 +90,11 @@ def display_salary(salary, outgoings):
 
 
 def connect_sql():
-    """ """
-    sql_user = os.environ["sql_user"]
-    sql_pass = os.environ["sql_password"]
-    sql_host = os.environ["sql_host"]
-    sql_db = os.environ["sql_db"]
+    """Establish a connection to the MySQL database using environment variables and return the cursor and connection."""
+    sql_user = os.environ["SQL_USER"]
+    sql_pass = os.environ["SQL_PASSWORD"]
+    sql_host = os.environ["SQL_HOST"]
+    sql_db = os.environ["SQL_DB"]
 
     config = {"user": sql_user, "password": sql_pass, "host": sql_host, "database": sql_db}
 
@@ -101,7 +105,7 @@ def connect_sql():
 
 
 def run_sql_query(query, commit=False, params=()):
-    """ """
+    """Execute a SQL query using a database connection and return the results as a DataFrame."""
     csr, conn = connect_sql()
 
     with csr as cur:
@@ -111,13 +115,14 @@ def run_sql_query(query, commit=False, params=()):
         try:
             data = pd.DataFrame.from_records(iter(cur), columns=[x[0] for x in cur.description])
         except BaseException:
+            logger.exception("Something went wrong")
             data = pd.DataFrame()
 
     return data
 
 
 def append_sql(data, table, person):
-    """ """
+    """Delete existing finance records for a person and append new data to the specified table."""
     query = """
             DELETE FROM personal.finances
             WHERE person = %s
@@ -126,44 +131,47 @@ def append_sql(data, table, person):
 
     run_sql_query(query, True, params)
 
-    # try:
-    sql_user = os.environ["sql_user"]
-    sql_pass = os.environ["sql_password"]
-    sql_host = os.environ["sql_host"]
-    sql_db = os.environ["sql_db"]
+    try:
+        sql_user = os.environ["SQL_USER"]
+        sql_pass = os.environ["SQL_PASSWORD"]
+        sql_host = os.environ["SQL_HOST"]
+        sql_db = os.environ["SQL_DB"]
 
-    c = f"mysql+mysqlconnector://{sql_user}:{sql_pass}@{sql_host}/{sql_db}"
+        c = f"mysql+mysqlconnector://{sql_user}:{sql_pass}@{sql_host}/{sql_db}"
 
-    engine = create_engine(c)
+        engine = create_engine(c)
 
-    data.to_sql(table, engine, if_exists="append", index=False)
+        data.to_sql(table, engine, if_exists="append", index=False)
 
-    engine.dispose()
+        engine.dispose()
 
-    return True
-    # except BaseException:
-    #     return False
+    except Exception:
+        logger.exception("Something went wrong")
+        return False
+    else:
+        return True
 
 
 def load_finances():
+    """Load all finance records from the database, ordered by person and amount descending."""
     query = """
-        SELECT *
-        FROM personal.finances
-        ORDER BY person, amount DESC
-    """
+            SELECT *
+            FROM personal.finances
+            ORDER BY person, amount DESC
+            """
     return run_sql_query(query)
 
 
 def calculate():
-    """ """
+    """Calculate and return financial data and outgoings for Toby and Abby."""
     data = load_finances()
     toby_df = data[data["person"] == "Toby"].reset_index(drop=True)
-    toby_outgoings = dict(zip(toby_df["outgoing"], toby_df["amount"]))
+    toby_outgoings = dict(zip(toby_df["outgoing"], toby_df["amount"], strict=False))
     toby_outgoings["Spending Money"] = float(st.session_state["spending_money"])
     toby_income = 4600
 
     abby_df = data[data["person"] == "Abby"].reset_index(drop=True)
-    abby_outgoings = dict(zip(abby_df["outgoing"], abby_df["amount"]))
+    abby_outgoings = dict(zip(abby_df["outgoing"], abby_df["amount"], strict=False))
     abby_outgoings["Spending Money"] = float(st.session_state["spending_money"])
     abby_income = 5719
 
