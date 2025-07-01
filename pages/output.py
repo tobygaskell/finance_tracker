@@ -1,4 +1,4 @@
-"""Streamlit page for displaying financial outputs, savings calculations, and house purchase planning."""
+"""Page for displaying financial outputs, savings calculations, and house purchase planning."""
 
 import streamlit as st
 

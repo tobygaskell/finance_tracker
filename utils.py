@@ -38,7 +38,7 @@ def calculate_stamp_duty(price):
 
 
 def display_salary(salary, outgoings):
-    """Display a stacked horizontal bar chart of salary allocation and return the remaining savings."""
+    """Display a stacked bar chart of salary allocation and return the remaining savings."""
     total_outgoings = sum(outgoings.values())
     savings = salary - total_outgoings
     segments = outgoings.copy()
@@ -90,7 +90,7 @@ def display_salary(salary, outgoings):
 
 
 def connect_sql():
-    """Establish a connection to the MySQL database using environment variables and return the cursor and connection."""
+    """Get a connection to the MySQL database and return the cursor and connection."""
     sql_user = os.environ["SQL_USER"]
     sql_pass = os.environ["SQL_PASSWORD"]
     sql_host = os.environ["SQL_HOST"]

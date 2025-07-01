@@ -26,8 +26,8 @@ lint.ignore = [
     "D211",
 ]
 
-# Allow lines to be as long as 120.
-line-length = 120
+# Allow lines to be as long as 100.
+line-length = 100
 
 # Group violations by containing file.
 output-format = "grouped"
